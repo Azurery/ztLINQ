@@ -35,10 +35,41 @@
 		}
 	};
 
+	/*当where_iterator自增时，他会有一个谓词条件，若没有满足这个条件，则会继续自增，以此过滤不满足条件的元素
+	 *where_iterator的取值操作为：直接对它所包装的迭代器进行*操作即可
+	 *
+	 */
+	template <typename Iterator,typename Function>
+	class where_iterator{
+	private:
+		Iterator _iterator;
+		Iterator _end;
+		Function _function;
+	public:
+		where_iterator(const Iterator& i,const Iterator& e,const Function& f):
+						_iterator(i),_end(e),_function(f){
+			while(iterator!=end && !_function(*iterator)){
+				++iterator;
+			}
+		}		
+
+		where_iterator& operator++(){
+			if(iterator==_end)
+				return *this;
+			++iterator;
+			while(iterator!=end && ！_function(*iterator)){
+				++iterator;
+			}
+			return *this;
+		}
+
+
+	}
+
 	/*linq_enumerable类中不保存对象本身，而是保存容器的迭代器，这也是一般的函数式语言的实现方式
 	 *select返回的对象与where返回的对象的唯一区别就是迭代器不同。我们可以设计一个通用的迭代器，
-	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个操作都设计一个新类型的迭代器，
-	 *比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
+	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个
+	 操作都设计一个新类型的迭代器，比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
 	 */
 	template <typename Iterator>
 	class linq_enumerable{
@@ -67,8 +98,6 @@
 					select_iterator<Iterator,Function>(_end,_function)
 				);
 			}
-
-			
 	};
 
 	//from函数
