@@ -1,2 +1,2 @@
 # ztLINQ
-This is a 
+This is a toy LINQ function

@@ -1,13 +1,25 @@
 
 #include <iostream>
 #include <vector>
-
+#include <cassert>
+using namespace std;
 	/*对于各种Iterator类，它需要接收一个或多个表示不确定类型的迭代器，
 	*并且视情况需要接受一个或多个不确定类型的lambda
 	*/
 	/*
 	 *select_iterator为select函数的迭代器
 	 */
+
+	//在取值操作中，返回类型时迭代器所指向的元素的类型
+	/*
+	 *nullptr是c++11标准中用来表示空指针的常量值，可以将其强行转化为指向Iterator的指针
+	 *然后对其解引用得到一个不存在的Iterator对象*(Iterator*)nullptr,
+	 *再对迭代器对象进行解引用，便可得到迭代器所指向的元素。
+	 *最后对其使用decltype操作，得到元素类型
+	 */
+	template <typename Iterator>
+	using my_iterator_type=decltype(**(Iterator*)nullptr);
+
 	template <typename Iterator,typename Function>
 	class select_iterator{
 	private:
@@ -48,23 +60,34 @@
 	public:
 		where_iterator(const Iterator& i,const Iterator& e,const Function& f):
 						_iterator(i),_end(e),_function(f){
-			while(iterator!=end && !_function(*iterator)){
-				++iterator;
+			while(_iterator!=_end && !_function(*_iterator)){
+				++_iterator;
 			}
 		}		
 
 		where_iterator& operator++(){
-			if(iterator==_end)
+			if(_iterator==_end)
 				return *this;
-			++iterator;
-			while(iterator!=end && ！_function(*iterator)){
-				++iterator;
+			++_iterator;
+			while(_iterator!=_end && !_function(*_iterator)){
+				++_iterator;
 			}
 			return *this;
 		}
+		
+		my_iterator_type<Iterator> operator*() const {
+			return *_iterator;
+		}
 
+		bool operator== (const where_iterator& self) const {
+			return self._iterator==_iterator;
+		}
 
-	}
+		bool operator!= (const where_iterator& self) const {
+			return !(self._iterator==_iterator);
+		}
+
+	};
 
 	/*linq_enumerable类中不保存对象本身，而是保存容器的迭代器，这也是一般的函数式语言的实现方式
 	 *select返回的对象与where返回的对象的唯一区别就是迭代器不同。我们可以设计一个通用的迭代器，
@@ -98,6 +121,16 @@
 					select_iterator<Iterator,Function>(_end,_function)
 				);
 			}
+
+			//where函数
+			//
+			template <typename Function>
+			auto where(const Function& _function) -> linq_enumerable<where_iterator<Iterator,Function>>{
+				return linq_enumerable<where_iterator<Iterator,Function>>(
+					where_iterator<Iterator,Function>(_begin,_end,_function),
+					where_iterator<Iterator,Function>(_end,_end,_function)
+				);
+			}
 	};
 
 	//from函数
@@ -109,13 +142,22 @@
 		return linq_enumerable<decltype(std::begin(_container))>(std::begin(_container),std::end(_container));
 	}
 
+
 	int main(){
-		std::vector<int> v={1,2,3,4,5,6,7,8,9};
+		//std::vector<int> v={1,2,3,4,5,6,7,8,9};
 		/*for(auto x:from(v)){
 			std::cout<<x<<std::endl;
 		}
 		*/
+		vector<int> v={2,3,4,5,6,7,8,9,15,20};
+		auto p=from(v).where([](int x){
+			return x%2==1;
+		});
 
+		for(auto first=p.begin();first!=p.end();++first){
+			cout<<*first<<endl;
+		}
+		
 		
 		return 0;
 	}
