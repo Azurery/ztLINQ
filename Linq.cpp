@@ -94,6 +94,34 @@ using namespace std;
 	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个
 	 操作都设计一个新类型的迭代器，比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
 	 */
+
+	template <typename Iterator>
+	class take_iterator{
+	private:
+		Iterator _iterator;
+		Iterator _end;
+		int _count;
+		int _cur;
+	public:
+		take_iterator(const Iterator& i,Iterator& e,int c):
+					_iterator(i),_end(e),_count(c),_cur(0){
+					
+			if(_cur==_count){
+				_iterator=_end;
+			}
+		}
+
+		my_iterator_type<Iterator> operator* () const {
+			return *_iterator;
+		}
+
+		take_iterator& operator++ {
+
+		}
+		
+	}
+
+
 	template <typename Iterator>
 	class linq_enumerable{
 	private:
