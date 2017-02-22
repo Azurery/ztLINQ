@@ -18,7 +18,7 @@ using namespace std;
 	 *最后对其使用decltype操作，得到元素类型
 	 */
 	template <typename Iterator>
-	using my_iterator_type=decltype(**(Iterator*)nullptr);
+	using iterator_type=decltype(**(Iterator*)nullptr);
 
 	template <typename Iterator,typename Function>
 	class select_iterator{
@@ -75,7 +75,7 @@ using namespace std;
 			return *this;
 		}
 		
-		my_iterator_type<Iterator> operator*() const {
+		iterator_type<Iterator> operator*() const {
 			return *_iterator;
 		}
 
@@ -89,44 +89,88 @@ using namespace std;
 
 	};
 
-	/*linq_enumerable类中不保存对象本身，而是保存容器的迭代器，这也是一般的函数式语言的实现方式
-	 *select返回的对象与where返回的对象的唯一区别就是迭代器不同。我们可以设计一个通用的迭代器，
-	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个
-	 操作都设计一个新类型的迭代器，比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
-	 */
 
+	//take函数的作用：从查询结果中提取前n个元素
 	template <typename Iterator>
 	class take_iterator{
 	private:
-		Iterator _iterator;
-		Iterator _end;
-		int _count;
-		int _cur;
+		Iterator _iterator;	//当前容器的迭代器
+		Iterator _end;		//当前容器的尾后位置
+		int _count;		//总的元素个数
+		int _cur;		//当前元素个数
 	public:
+		//take_iterator的构造函数默认初始化为从容器起始位置开始到容器尾后位置截止的范围内的第0个位置
 		take_iterator(const Iterator& i,Iterator& e,int c):
 					_iterator(i),_end(e),_count(c),_cur(0){
-					
+			//如果当前元素个数等于总的元素个数，则说明处在容器的末尾位置		
 			if(_cur==_count){
 				_iterator=_end;
 			}
 		}
 
-		my_iterator_type<Iterator> operator* () const {
+		iterator_type<Iterator> operator* () const {
 			return *_iterator;
 		}
 
-		take_iterator& operator++ {
+		take_iterator& operator++() {
+			//首先检查cur是否指向了容器的尾后位置
+			if(++_cur==_count)
+				_iterator=_end;
+			else
+				++_iterator;
+			return *this;
+		}
 
+		bool operator==(const take_iterator& _self) const{
+			return _self._iterator==_iterator;
+		}
+
+		bool operator!=(const take_iterator& _self) const{
+			return !(_self._iterator==_iterator);
 		}
 		
+	}；
+
+
+	/*
+	TakeWhile<TSource>(IEnumerable<TSource>, Func<TSource, Boolean> predicate)方法使用 predicate 对 
+	source 中的每个元素进行测试，如果结果为true，则生成该元素。 
+	当谓词函数对某个元素返回false或source中不再包含元素时，枚举将停止。
+	*/
+	template <typename Iterator,typename Function>
+	class take_while_iterator{
+	private:
+		Iterator _iterator;
+		Iterator _end;
+		Function _function;
+	public:
+		take_while_iterator(const Iterator& i,const Iterator& e,const Function& f):
+							_iterator(i),_end(e),_function(f){
+			if(_iterator!=end&&!_function(*_iterator)){
+				_iterator=_end;
+			}
+		}
+
+		take_while_iterator& operator++(){
+			++_iterator;
+			//用于测试每个元素是否满足条件的函数
+			//
+			if(!_function(*_iterator)){
+
+			}
+		}
 	}
 
-
+	/*linq_enumerable类中不保存对象本身，而是保存容器的迭代器，这也是一般的函数式语言的实现方式
+	 *select返回的对象与where返回的对象的唯一区别就是迭代器不同。我们可以设计一个通用的迭代器，
+	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个
+	 操作都设计一个新类型的迭代器，比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
+	 */
 	template <typename Iterator>
 	class linq_enumerable{
 	private:
-		Iterator _begin;	//迭代器起始位置
-		Iterator _end;		//迭代器末尾
+		Iterator _begin;	//容器起始位置
+		Iterator _end;		//容器末尾
 	public:
 			linq_enumerable(const Iterator& b,const Iterator& e):
 							_begin(b),_end(e){}
@@ -144,7 +188,7 @@ using namespace std;
 			*/
 			template <typename Function>
 			auto select(const Function& _function) const ->linq_enumerable<select_iterator<Iterator,Function>>{
-				return linq_enumerable<select_iterator<Iterator,Function>>(
+	 			return linq_enumerable<select_iterator<Iterator,Function>>(
 					select_iterator<Iterator,Function>(_begin,_function),
 					select_iterator<Iterator,Function>(_end,_function)
 				);
@@ -154,11 +198,22 @@ using namespace std;
 			//
 			template <typename Function>
 			auto where(const Function& _function) -> linq_enumerable<where_iterator<Iterator,Function>>{
-				return linq_enumerable<where_iterator<Iterator,Function>>(
-					where_iterator<Iterator,Function>(_begin,_end,_function),
+		 		return linq_enumerable<where_iterator<Iterator,Function>>(
+		 			where_iterator<Iterator,Function>(_begin,_end,_function),
 					where_iterator<Iterator,Function>(_end,_end,_function)
 				);
 			}
+
+			//take函数->现将迭代器包装成take_iterator，然后返回linq_enumerable对象
+			//作用：从查询结果中提取前n个元素
+			auto take(int num) -> linq_enumerable<take_iterator<Iterator>>{
+				return linq_enumerable<take_iterator<Iterator>>(
+					take_iterator<Iterator>(_begin,_end,_num),	//take_iterator的起始位置
+					take_iterator<Iterator>(_end,_end,_num)		//指向take_iterator的尾后位置
+				);
+			}
+
+			//take-while函数：只要满足指定的条件，就返回序列的元素
 	};
 
 	//from函数
