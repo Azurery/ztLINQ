@@ -154,75 +154,73 @@ using namespace std;
 		take_while_iterator& operator++(){
 			++_iterator;
 			//用于测试每个元素是否满足条件的函数
-			//
+			//如果不满足，则将迭代器位置移到容器末尾位置
 			if(!_function(*_iterator)){
-
+                _iterator=_end;
 			}
+            return *this;
 		}
-	}
+
+        iterator_type<Iterator> operator*() const{
+            return *_iterator;
+        }
+
+        bool operator==(const take_while_iterator& _self) const{
+            return _self._iterator==_iterator;
+        }
+
+        bool operator!=(const take_while_iterator& _self) const{
+            return !(_self._iterator==_iterator);
+        }
+	};
+
+    //skip_iterator: Skip<TSource>
+    //跳过序列中指定数量的元素，然后返回剩余的元素。
+    template <typename Iterator>
+    class skip_iterator{
+    private:
+        Iterator _iterator;
+        Iterator _end;
+        int _count;
+    public:
+        skip_iterator(const Iterator& i,const Iterator& e,int c):
+        _iterator(i),_end(e),_count(c){
+            while(_iterator!=_end&&(count--)>0){
+                ++_iterator;
+            }
+        }
+
+        iterator_type<Iterator> operator*() const{
+            return *_iterator;
+        }
+
+        skip_iterator& operator++(){
+            ++_iterator;
+            return *this;
+        }
+
+        bool operator==(const skip_iterator& _self) const{
+            return _self._iterator==_iterator;
+        }
+
+        bool operator!=(const skip_iterator& _self) const{
+            return !(_self._iterator==_iterator);
+        }
+
+        
+    };
 
 	/*linq_enumerable类中不保存对象本身，而是保存容器的迭代器，这也是一般的函数式语言的实现方式
 	 *select返回的对象与where返回的对象的唯一区别就是迭代器不同。我们可以设计一个通用的迭代器，
 	 *它可以处理多种不同的迭代需求，包括跳过一些元素或者对一些元素做处理，但是更好的方法是对每一个
 	 操作都设计一个新类型的迭代器，比如select_iterator和where_iterator等，然后用模板来处理不同的迭代器。			
-	 */
-	template <typename Iterator>
-	class linq_enumerable{
-	private:
-		Iterator _begin;	//容器起始位置
-		Iterator _end;		//容器末尾
-	public:
-			linq_enumerable(const Iterator& b,const Iterator& e):
-							_begin(b),_end(e){}
-
-			Iterator begin() const {
-				return _begin;
-			}
-
-			Iterator end() const {
-				return _end;
-			}
-			
-			/*只要用select_iterator做参数构造并返回一个新的linq_enumerable对象
-			*就可以了。
-			*/
-			template <typename Function>
-			auto select(const Function& _function) const ->linq_enumerable<select_iterator<Iterator,Function>>{
-	 			return linq_enumerable<select_iterator<Iterator,Function>>(
-					select_iterator<Iterator,Function>(_begin,_function),
-					select_iterator<Iterator,Function>(_end,_function)
-				);
-			}
-
-			//where函数
-			//
-			template <typename Function>
-			auto where(const Function& _function) -> linq_enumerable<where_iterator<Iterator,Function>>{
-		 		return linq_enumerable<where_iterator<Iterator,Function>>(
-		 			where_iterator<Iterator,Function>(_begin,_end,_function),
-					where_iterator<Iterator,Function>(_end,_end,_function)
-				);
-			}
-
-			//take函数->现将迭代器包装成take_iterator，然后返回linq_enumerable对象
-			//作用：从查询结果中提取前n个元素
-			auto take(int num) -> linq_enumerable<take_iterator<Iterator>>{
-				return linq_enumerable<take_iterator<Iterator>>(
-					take_iterator<Iterator>(_begin,_end,_num),	//take_iterator的起始位置
-					take_iterator<Iterator>(_end,_end,_num)		//指向take_iterator的尾后位置
-				);
-			}
-
-			//take-while函数：只要满足指定的条件，就返回序列的元素
-	};
-
-	//from函数
-	//由于不能直接在c++的数组中添加方法，便需要用数组调用一个函数来返回一个类，最后再想这个类添加LINQ方法。
-	//把该函数命名为from，把类命名为linq_enumerable。
-	//from函数接受一个表示容器的参数或者表示区间的参数，返回类linq_enumerable的对对象
-	template <typename Container>
+	 */数或者表示区间的参数，返回类linq_enumerable的对对象
+     template <typename Container>
 	auto from(const Container& _container) -> linq_enumerable<decltype(std::begin(_container))>{
-		return linq_enumerable<decltype(std::begin(_container))>(std::begin(_container),std::end(_container));
+		return linq_enumerable<decltype(std::begin(_container))>(
+            std::begin(_container),
+            std::end(_container)
+        );
 	}
 
 
@@ -234,13 +232,13 @@ using namespace std;
 		*/
 		vector<int> v={2,3,4,5,6,7,8,9,15,20};
 		auto p=from(v).where([](int x){
-			return x%2==1;
+            return x%2==1;
 		});
 
 		for(auto first=p.begin();first!=p.end();++first){
 			cout<<*first<<endl;
 		}
 		
-		
+
 		return 0;
 	}
